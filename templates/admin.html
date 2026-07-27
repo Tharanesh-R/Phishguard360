@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel{% endblock %}
+{% block nav_admin %}active{% endblock %}
+{% block page_title %}Admin Panel{% endblock %}
+{% block page_subtitle %}System configuration & AI model performance{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .accuracy-hero {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 40px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+
+    .accuracy-display {
+        margin-bottom: 20px;
+    }
+
+    .accuracy-display h2 {
+        font-size: 48px;
+        font-weight: 800;
+        color: #39FF14;
+        letter-spacing: -2px;
+    }
+
+    .accuracy-display span {
+        font-size: 14px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .metric-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .metric-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+    }
+
+    .metric-card h3 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .metric-card p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .info-section {
+        margin-bottom: 24px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+    }
+
+    .info-item .label {
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .info-item .value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .feature-bar-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .feature-bar-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .feature-bar-name {
+        flex: 0 0 180px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        text-align: right;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .feature-bar-track {
+        flex: 1;
+        height: 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 100px;
+        overflow: hidden;
+    }
+
+    .feature-bar-fill {
+        height: 100%;
+        border-radius: 100px;
+        background: #39FF14;
+    }
+
+    .feature-bar-val {
+        flex: 0 0 50px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .metric-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .feature-bar-name {
+            flex: 0 0 120px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ACCURACY HERO -->
+<div class="accuracy-hero">
+    <div class="accuracy-display">
+        <h2>{{ accuracy }}%</h2>
+        <span>Model Accuracy</span>
+    </div>
+    <h3 style="font-size:16px; font-weight:600; margin-bottom:4px;">AI Model Performance</h3>
+    <p style="color:var(--text-secondary); font-size:14px;">Advanced phishing detection model trained on 88K+ URL
+        samples</p>
+</div>
+
+<!-- METRIC CARDS -->
+<div class="metric-cards" id="metricCards">
+    <div class="metric-card">
+        <h3 style="color:var(--green);" id="metricPrecision">--</h3>
+        <p>Precision</p>
+    </div>
+    <div class="metric-card">
+        <h3 style="color:var(--blue);" id="metricRecall">--</h3>
+        <p>Recall</p>
+    </div>
+    <div class="metric-card">
+        <h3 style="color:#39FF14;" id="metricF1">--</h3>
+        <p>F1 Score</p>
+    </div>
+</div>
+
+<!-- SYSTEM INFO -->
+<div class="info-section">
+    <div class="card">
+        <h3 class="section-title">System Information</h3>
+        <div class="info-grid" id="infoGrid">
+            <div class="info-item">
+                <span class="label">Model Type</span>
+                <span class="value" id="infoModelType">Loading...</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Total Features</span>
+                <span class="value" id="infoFeatures">--</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Training Samples</span>
+                <span class="value" id="infoSamples">--</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Backend Status</span>
+                <span class="value" id="infoStatus" style="color: var(--green);">Checking...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOP FEATURES -->
+<div class="info-section">
+    <div class="card">
+        <h3 class="section-title">Top Predictive Features</h3>
+        <div class="feature-bar-list" id="featureBars">
+            <p style="color: var(--text-secondary); font-size: 13px;">Loading feature importance data...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadAdminData() {
+        try {
+            const res = await fetch('/api/model_info');
+            if (!res.ok) throw new Error('Backend offline');
+            const info = await res.json();
+
+            // Metrics
+            document.getElementById('metricPrecision').textContent = (info.precision || 0) + '%';
+            document.getElementById('metricRecall').textContent = (info.recall || 0) + '%';
+            document.getElementById('metricF1').textContent = (info.f1_score || 0) + '%';
+
+            // Info grid
+            document.getElementById('infoModelType').textContent = info.model_name || info.model_type || 'N/A';
+            document.getElementById('infoFeatures').textContent = info.n_features || 'N/A';
+            document.getElementById('infoSamples').textContent = info.training_samples ? info.training_samples.toLocaleString() : 'N/A';
+            document.getElementById('infoStatus').textContent = 'Online';
+            document.getElementById('infoStatus').style.color = 'var(--green)';
+
+            // Top features bar chart
+            if (info.top_features && info.top_features.length > 0) {
+                const maxImportance = info.top_features[0][1];
+                const barsHTML = info.top_features.map(([name, importance]) => {
+                    const pct = ((importance / maxImportance) * 100).toFixed(1);
+                    return `
+                        <div class="feature-bar-item">
+                            <div class="feature-bar-name">${name}</div>
+                            <div class="feature-bar-track">
+                                <div class="feature-bar-fill" style="width: ${pct}%"></div>
+                            </div>
+                            <div class="feature-bar-val">${(importance * 100).toFixed(1)}%</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('featureBars').innerHTML = barsHTML;
+            } else {
+                document.getElementById('featureBars').innerHTML = '<p style="color: var(--text-secondary); font-size: 13px;">No feature importance data available for this model.</p>';
+            }
+
+        } catch (e) {
+            document.getElementById('infoStatus').textContent = 'Offline';
+            document.getElementById('infoStatus').style.color = 'var(--red)';
+        }
+    }
+
+    loadAdminData();
+</script>
+{% endblock %}

@@ -1,0 +1,591 @@
+{% extends "base.html" %}
+
+{% block title %}Email Scanner{% endblock %}
+{% block nav_email %}active{% endblock %}
+{% block page_title %}Real-Time Email Scanner{% endblock %}
+{% block page_subtitle %}AI-powered inbox monitoring with live threat detection{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .email-hero {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 40px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+
+    .hero-content {
+        max-width: 600px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .hero-icon-wrap {
+        width: 56px;
+        height: 56px;
+        background: rgba(57, 255, 20, 0.1);
+        color: #39FF14;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        border: 1px solid rgba(57, 255, 20, 0.2);
+    }
+
+    .hero-text h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--text);
+    }
+
+    .hero-text p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .scan-controls {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    /* Auto-refresh toggle */
+    .auto-refresh-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 13px;
+        color: var(--text);
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 40px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--text-muted);
+        border-radius: 100px;
+        transition: 0.2s;
+        opacity: 0.3;
+    }
+
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        left: 2px;
+        top: 2px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+        background: var(--green);
+        opacity: 1;
+    }
+
+    .toggle-switch input:checked+.toggle-slider::before {
+        transform: translateX(20px);
+    }
+
+    /* Status bar */
+    .live-status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .live-status-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--green);
+    }
+
+    .status-dot.scanning {
+        background: #39FF14;
+        box-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
+    }
+
+    .status-dot.error {
+        background: var(--red);
+    }
+
+    .scan-stats-mini {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .scan-stats-mini span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Results */
+    .realtime-results {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .rt-header {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rt-header h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .rt-empty {
+        padding: 48px 20px;
+        text-align: center;
+    }
+
+    .rt-empty .e-icon {
+        font-size: 36px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+
+    .rt-empty h4 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+
+    .rt-empty p {
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+
+    .email-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .email-row:last-child {
+        border-bottom: none;
+    }
+
+    .er-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .er-indicator.high {
+        background: var(--red);
+    }
+
+    .er-indicator.medium {
+        background: var(--amber);
+    }
+
+    .er-indicator.low {
+        background: var(--green);
+    }
+
+    .er-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .er-subject {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 2px;
+    }
+
+    .er-sender {
+        font-size: 12px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .er-meta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-shrink: 0;
+    }
+
+    .er-score {
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    /* Info cards */
+    .info-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .info-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .info-card .info-icon {
+        width: 44px;
+        height: 44px;
+        margin: 0 auto 12px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        background: var(--bg);
+    }
+
+    .info-card h4 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--text);
+    }
+
+    .info-card p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .requirements-note {
+        padding: 18px;
+        background: rgba(240, 136, 62, 0.06);
+        border: 1px solid rgba(240, 136, 62, 0.15);
+        border-radius: 8px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .requirements-note .note-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .requirements-note h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--amber);
+        margin-bottom: 4px;
+    }
+
+    .requirements-note p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .requirements-note code {
+        background: rgba(57, 255, 20, 0.08);
+        color: #39FF14;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: monospace;
+    }
+
+    /* Spinner */
+    .scan-spinner-inline {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border);
+        border-top-color: #39FF14;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .info-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="email-hero">
+    <div class="hero-content">
+        <div class="hero-icon-wrap">📧</div>
+        <div class="hero-text">
+            <h3>Real-Time Email Scanner</h3>
+            <p>Monitor your inbox continuously for phishing threats. Our AI analyzes email subjects for suspicious
+                keywords
+                and scans embedded URLs through the ML model for comprehensive threat detection.</p>
+            <div class="scan-controls">
+                <form method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        Full Inbox Scan
+                    </button>
+                </form>
+                <button class="btn btn-secondary" id="quickScanBtn" onclick="quickScan()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                    Scan Unread Now
+                </button>
+                <div class="auto-refresh-wrap">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoRefreshToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Auto-refresh</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="live-status-bar" id="liveStatusBar">
+    <div class="live-status-left">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Ready to scan</span>
+    </div>
+    <div class="scan-stats-mini" id="scanStats">
+        <span>🕐 Last scan: <strong id="lastScanTime">Never</strong></span>
+    </div>
+</div>
+
+<!-- RESULTS -->
+<div class="realtime-results" id="resultsContainer">
+    <div class="rt-header">
+        <h3>Unread Email Threats</h3>
+        <div id="resultsCount" class="badge-pill">0 emails</div>
+    </div>
+    <div id="resultsBody">
+        <div class="rt-empty">
+            <div class="e-icon">🔍</div>
+            <h4>No Scan Results Yet</h4>
+            <p>Click "Scan Unread Now" or enable auto-refresh to start monitoring</p>
+        </div>
+    </div>
+</div>
+
+<div class="info-cards">
+    <div class="info-card">
+        <div class="info-icon">🤖</div>
+        <h4>ML-Powered URL Analysis</h4>
+        <p>Extracts URLs from email bodies and scans them through the AI model trained on 88K+ phishing URLs.</p>
+    </div>
+    <div class="info-card">
+        <div class="info-icon">🔍</div>
+        <h4>Keyword Detection</h4>
+        <p>Scans subjects for 20+ suspicious keywords including "urgent", "verify", "password", "suspended" and more.
+        </p>
+    </div>
+    <div class="info-card">
+        <div class="info-icon">⚡</div>
+        <h4>Real-Time Monitoring</h4>
+        <p>Enable auto-refresh for continuous monitoring. New unread emails are automatically scanned every 60 seconds.
+        </p>
+    </div>
+</div>
+
+<div class="requirements-note">
+    <div class="note-icon">⚠️</div>
+    <div>
+        <h4>Configuration Required</h4>
+        <p>Set your Gmail credentials in <code>.env</code>:
+            <code>EMAIL_USER=your_email@gmail.com</code> and <code>EMAIL_PASS=your_app_password</code><br>
+            Use a Gmail App Password (not your regular password) for IMAP access.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let autoRefreshInterval = null;
+    let isScanning = false;
+
+    async function quickScan() {
+        if (isScanning) return;
+        isScanning = true;
+
+        const btn = document.getElementById('quickScanBtn');
+        const dot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="scan-spinner-inline"></span> Scanning...';
+        dot.className = 'status-dot scanning';
+        statusText.textContent = 'Scanning unread emails...';
+
+        try {
+            const res = await fetch('/api/email_scan');
+            const data = await res.json();
+
+            if (data.error) {
+                dot.className = 'status-dot error';
+                statusText.textContent = 'Error: ' + data.error;
+                renderResults([]);
+            } else {
+                dot.className = 'status-dot';
+                const time = new Date(data.scan_time);
+                const timeStr = time.toLocaleTimeString();
+                statusText.textContent = `Found ${data.total} unread emails`;
+                document.getElementById('lastScanTime').textContent = timeStr;
+
+                document.getElementById('scanStats').innerHTML = `
+                    <span>🚨 High: <strong style="color:var(--red)">${data.high_risk}</strong></span>
+                    <span>⚠️ Medium: <strong style="color:var(--amber)">${data.medium_risk}</strong></span>
+                    <span>✅ Safe: <strong style="color:var(--green)">${data.low_risk}</strong></span>
+                    <span>🕐 ${timeStr}</span>
+                `;
+
+                renderResults(data.results || []);
+                document.getElementById('resultsCount').textContent = (data.total || 0) + ' emails';
+            }
+        } catch (err) {
+            dot.className = 'status-dot error';
+            statusText.textContent = 'Connection error — is the backend running?';
+        } finally {
+            isScanning = false;
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg> Scan Unread Now`;
+        }
+    }
+
+    function renderResults(results) {
+        const body = document.getElementById('resultsBody');
+
+        if (!results || results.length === 0) {
+            body.innerHTML = `<div class="rt-empty">
+                <div class="e-icon">📭</div>
+                <h4>No Unread Emails</h4>
+                <p>Your inbox is clean! No unread emails detected.</p>
+            </div>`;
+            return;
+        }
+
+        body.innerHTML = results.map((e, i) => {
+            const level = e.risk >= 70 ? 'high' : e.risk >= 40 ? 'medium' : 'low';
+            const color = e.risk >= 70 ? 'var(--red)' : e.risk >= 40 ? 'var(--amber)' : 'var(--green)';
+
+            return `<div class="email-row">
+                <div class="er-indicator ${level}"></div>
+                <div class="er-info">
+                    <div class="er-subject">${escHtml(e.subject)}</div>
+                    <div class="er-sender">${escHtml(e.sender)}</div>
+                </div>
+                <div class="er-meta">
+                    ${e.url_count ? `<span style="font-size:11px;color:var(--text-secondary)">🔗 ${e.url_count} URLs</span>` : ''}
+                    <span class="er-score" style="color:${color}">${e.risk}%</span>
+                    <span class="risk-badge risk-${level}">${e.label}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function escHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str || '';
+        return d.innerHTML;
+    }
+
+    // Auto-refresh
+    document.getElementById('autoRefreshToggle').addEventListener('change', function () {
+        if (this.checked) {
+            quickScan();
+            autoRefreshInterval = setInterval(quickScan, 60000);
+            document.getElementById('statusText').textContent = 'Auto-refresh enabled (every 60s)';
+        } else {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+            document.getElementById('statusText').textContent = 'Auto-refresh disabled';
+        }
+    });
+</script>
+{% endblock %}

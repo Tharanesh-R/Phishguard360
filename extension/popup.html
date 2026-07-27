@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>PhishGuard 360 — AI Phishing Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== VARIABLES ===== */
+        :root {
+            --bg: #0D1117;
+            --bg-card: rgba(22, 27, 34, 0.9);
+            --bg-glass: rgba(57, 255, 20, 0.03);
+            --bg-glass-hover: rgba(57, 255, 20, 0.06);
+            --border: rgba(57, 255, 20, 0.1);
+            --border-hover: rgba(57, 255, 20, 0.2);
+            --text: #E6EDF3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent: #39FF14;
+            --accent-light: #5aff3e;
+            --purple: #39FF14;
+            --cyan: #39FF14;
+            --green: #39FF14;
+            --amber: #f0883e;
+            --red: #FF4C4C;
+            --gradient: linear-gradient(135deg, #39FF14 0%, #2dcc10 100%);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            width: 400px;
+            min-height: 320px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* ===== AMBIENT GLOW ===== */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%;
+            left: -20%;
+            width: 160%;
+            height: 160%;
+            background:
+                radial-gradient(ellipse at 30% 20%, rgba(57, 255, 20, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(57, 255, 20, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            position: relative;
+            padding: 22px 24px;
+            background: linear-gradient(135deg, rgba(57, 255, 20, 0.08) 0%, rgba(57, 255, 20, 0.03) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 1;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(57, 255, 20, 0.3), transparent);
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(57, 255, 20, 0.25);
+            flex-shrink: 0;
+        }
+
+        .brand-icon svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .brand-text h2 {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand-text p {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* ===== CONTENT ===== */
+        .content {
+            padding: 20px 22px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== URL DISPLAY ===== */
+        .url-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 14px;
+            transition: var(--transition);
+        }
+
+        .url-bar:hover {
+            border-color: var(--border-hover);
+        }
+
+        .url-bar .url-icon {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+        }
+
+        .url-bar .url-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+            max-height: 36px;
+            overflow-y: auto;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .url-bar .url-text::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .url-bar .url-text::-webkit-scrollbar-thumb {
+            background: rgba(57, 255, 20, 0.2);
+            border-radius: 10px;
+        }
+
+        /* ===== PROTECTION CONTROLS ===== */
+        .controls-grid {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+
+        .control-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .control-label svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            transition: 0.35s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.35s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked+.toggle-slider {
+            background: var(--gradient);
+        }
+
+        input:checked+.toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        /* Protection level select */
+        .level-select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px;
+            font-family: inherit;
+            font-weight: 600;
+            padding: 5px 10px;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            padding-right: 26px;
+        }
+
+        .level-select option {
+            background: #1a2332;
+            color: var(--text);
+        }
+
+        /* ===== THREAT COUNTER ===== */
+        .threat-counter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, rgba(255, 76, 76, 0.08), rgba(255, 76, 76, 0.03));
+            border: 1px solid rgba(255, 76, 76, 0.15);
+            border-radius: var(--radius-sm);
+            margin-bottom: 14px;
+        }
+
+        .threat-counter.safe {
+            background: linear-gradient(135deg, rgba(57, 255, 20, 0.06), rgba(57, 255, 20, 0.02));
+            border-color: rgba(57, 255, 20, 0.15);
+        }
+
+        .threat-count-number {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--red);
+            min-width: 30px;
+        }
+
+        .threat-counter.safe .threat-count-number {
+            color: var(--green);
+        }
+
+        .threat-count-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .threat-count-text strong {
+            color: var(--text);
+        }
+
+        /* ===== SCAN BUTTON ===== */
+        .scan-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .scan-btn:hover::before {
+            left: 100%;
+        }
+
+        .scan-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(57, 255, 20, 0.3);
+        }
+
+        .scan-btn:active {
+            transform: translateY(0);
+        }
+
+        .scan-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .scan-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ===== RESULT BOX ===== */
+        .result-box {
+            border-radius: var(--radius);
+            padding: 20px;
+            display: none;
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: 14px;
+        }
+
+        .result-box.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-safe {
+            background: rgba(57, 255, 20, 0.06);
+            border: 1px solid rgba(57, 255, 20, 0.15);
+        }
+
+        .result-suspicious {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .result-danger {
+            background: rgba(255, 76, 76, 0.06);
+            border: 1px solid rgba(255, 76, 76, 0.15);
+        }
+
+        .result-scanning {
+            background: rgba(57, 255, 20, 0.04);
+            border: 1px solid rgba(57, 255, 20, 0.12);
+        }
+
+        .result-error {
+            background: rgba(255, 76, 76, 0.06);
+            border: 1px solid rgba(255, 76, 76, 0.15);
+        }
+
+        .result-caution {
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+        }
+
+        .result-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .domain-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .risk-score {
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        .risk-label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .result-msg {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Trust Badge */
+        .trust-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 10px;
+        }
+
+        .trust-trusted {
+            background: rgba(57, 255, 20, 0.08);
+            color: #39FF14;
+            border: 1px solid rgba(57, 255, 20, 0.15);
+        }
+
+        .trust-unknown {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .trust-browser {
+            background: rgba(6, 182, 212, 0.1);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        /* ===== FLAGS ===== */
+        .flags-section {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .flags-section.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .flags-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .flag-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 100px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin: 2px 3px 2px 0;
+        }
+
+        .flag-chip::before {
+            content: '⚡';
+            font-size: 9px;
+        }
+
+        /* ===== RECENT BLOCKS ===== */
+        .recent-blocks {
+            margin-bottom: 14px;
+        }
+
+        .recent-blocks-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .recent-blocks-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .recent-blocks-chevron {
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+            transition: transform 0.3s;
+        }
+
+        .recent-blocks-header.open .recent-blocks-chevron {
+            transform: rotate(180deg);
+        }
+
+        .recent-blocks-list {
+            display: none;
+            padding-top: 4px;
+        }
+
+        .recent-blocks-list.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .block-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: var(--transition);
+        }
+
+        .block-entry:hover {
+            border-color: var(--border-hover);
+        }
+
+        .block-entry-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .block-entry-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .block-entry-domain {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .block-entry-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-entry-risk {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--red);
+            flex-shrink: 0;
+        }
+
+        .no-blocks-msg {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 12px;
+        }
+
+        /* ===== SPINNER ===== */
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(57, 255, 20, 0.15);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            padding: 14px 22px;
+            background: rgba(13, 17, 23, 0.8);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .status-online {
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-offline {
+            background: var(--red);
+            box-shadow: 0 0 6px rgba(255, 76, 76, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .model-info {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: right;
+            max-width: 180px;
+        }
+
+        .model-info strong {
+            color: var(--text-secondary);
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(57, 255, 20, 0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+        </div>
+        <div class="brand-text">
+            <h2>PhishGuard 360</h2>
+            <p>Fortinet-Style Auto-Block Protection</p>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+        <!-- URL Bar -->
+        <div class="url-bar">
+            <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            <div class="url-text" id="urlDisplay">Loading current URL...</div>
+        </div>
+
+        <!-- Protection Controls -->
+        <div class="controls-grid">
+            <!-- Auto-Block Toggle -->
+            <div class="control-row">
+                <div class="control-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Auto-Block Protection
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="autoBlockToggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Protection Level -->
+            <div class="control-row">
+                <div class="control-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    Protection Level
+                </div>
+                <select class="level-select" id="protectionLevel">
+                    <option value="strict">🔒 Strict</option>
+                    <option value="standard" selected>🛡️ Standard</option>
+                    <option value="permissive">🔓 Permissive</option>
+                </select>
+            </div>
+
+            <!-- Auto-Scan Toggle -->
+            <div class="control-row">
+                <div class="control-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                    Auto-Scan on Open
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="autoScanToggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Threat Counter -->
+        <div class="threat-counter safe" id="threatCounter">
+            <div class="threat-count-number" id="threatCount">0</div>
+            <div class="threat-count-text">
+                <strong>threats blocked</strong> today<br>
+                <span id="threatSubtext">Your browsing is protected</span>
+            </div>
+        </div>
+
+        <!-- Scan Button -->
+        <button class="scan-btn" id="scanBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Scan This Website
+        </button>
+
+        <!-- Result Box -->
+        <div class="result-box" id="resultBox">
+            <div class="result-top">
+                <div class="domain-name" id="domainDisplay"></div>
+                <div class="risk-score" id="riskScore"></div>
+            </div>
+            <div class="risk-label" id="riskLabel"></div>
+            <div class="result-msg" id="riskMessage"></div>
+            <div id="trustBadge"></div>
+        </div>
+
+        <!-- Flags -->
+        <div class="flags-section" id="flagsContainer">
+            <div class="flags-title">Detection Flags</div>
+            <div id="flagsList"></div>
+        </div>
+
+        <!-- Recent Blocks -->
+        <div class="recent-blocks" id="recentBlocksSection">
+            <div class="recent-blocks-header" id="recentBlocksHeader">
+                <span class="recent-blocks-title">
+                    🛡️ Recent Blocks
+                    <span id="recentBlocksCount" style="color: var(--red);"></span>
+                </span>
+                <svg class="recent-blocks-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
+            </div>
+            <div class="recent-blocks-list" id="recentBlocksList"></div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="status-row">
+            <div class="status-dot" id="statusIndicator"></div>
+            <span id="backendStatus">Checking backend...</span>
+        </div>
+        <div class="model-info" id="modelBadge"></div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

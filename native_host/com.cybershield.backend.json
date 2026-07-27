@@ -1,0 +1,9 @@
+{
+  "name": "com.cybershield.backend",
+  "description": "PhishGuard 360 Backend Auto-Start Host",
+  "path": "C:\\Users\\NADHIN R\\Downloads\\finalatz\\CyberShield_Advanced_Full\\native_host\\cybershield_host.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://mghempnjilggpijonlcffidolmcnjdgl/"
+  ]
+}
